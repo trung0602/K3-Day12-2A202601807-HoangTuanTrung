@@ -50,14 +50,14 @@ jobs:
       - build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment: production
+    env:
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
 
     steps:
       - name: Trigger deploy hook
-        env:
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-        run: |
-          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
-            echo "Missing RENDER_DEPLOY_HOOK_URL secret"
-            exit 1
-          fi
-          curl --fail --request POST "$RENDER_DEPLOY_HOOK_URL"
+        if: env.RENDER_DEPLOY_HOOK_URL != ''
+        run: curl --fail --request POST "$RENDER_DEPLOY_HOOK_URL"
+
+      - name: Skip deploy when hook secret is not configured
+        if: env.RENDER_DEPLOY_HOOK_URL == ''
+        run: echo "RENDER_DEPLOY_HOOK_URL secret is not configured; skipping deploy."
