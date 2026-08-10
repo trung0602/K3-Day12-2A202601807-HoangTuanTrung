@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,6 +34,12 @@ class Settings(BaseSettings):
     chỉ phát hiện ra khi ai đó đã gọi API miễn phí bằng khóa mặc định đó.
     Không mặc định = fail fast ngay lúc khởi động.
     """
+    port: int = 8000
+    agent_api_key: str                 # Bắt buộc — app chết ngay nếu thiếu (fail-fast)
+    redis_url: str = "redis://localhost:6379/0"
+    rate_limit_per_minute: int = 10
+    monthly_budget_usd: float = 10.0
+    log_level: str = "INFO"
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -40,9 +47,16 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # TODO (CP1): khai báo 6 trường theo bảng trên, ví dụ:
-    #     port: int = 8000
-    #     agent_api_key: str
+    @field_validator("agent_api_key")
+    @classmethod
+    def validate_agent_api_key(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("agent_api_key is required")
+        placeholders = {"changeme", "change-me", "your-api-key", "placeholder"}
+        if cleaned.lower() in placeholders:
+            raise ValueError("agent_api_key must not be a placeholder")
+        return cleaned
 
 
 @lru_cache(maxsize=1)
